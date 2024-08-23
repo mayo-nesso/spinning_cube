@@ -47,7 +47,8 @@ You should see a rotating ASCII cube displayed in your terminal.
 ## Notes
 
 The cube rotates continuously with ~~adjustable~~ speed (hardcoded by now, but it could be nice to control the rotation with the keyboard).
-Colors are applied to different faces of the cube for better visual distinction, each face has its own 'Letter' (F = Front, K = Back, T = Top, B = Bottom, and so on...).
+
+Colors are applied to different faces of the cube for better visual distinction, where each face has its own 'Letter' (F = Front, K = Back, T = Top, B = Bottom, and so on...).
 
 ## Acknowledgments
 
