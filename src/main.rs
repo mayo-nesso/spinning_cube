@@ -1,21 +1,45 @@
 use std::io::{stdout, Write};
 use std::{thread, time::Duration};
 use colored::*;
+use once_cell::unsync::Lazy;
+use std::collections::HashMap;
 
-// Initialize cubeWidth, then canvas width, and height
-const CUBE_WIDTH: usize = 20;
-const CANVAS_WIDTH: usize = 50;
+const CUBE_WIDTH: usize = 25;
+const HALF_CUBE_WIDTH: usize = (CUBE_WIDTH as f32 / 2.0) as usize;
+const CANVAS_WIDTH: usize = 80;
 const CANVAS_HEIGHT: usize = 40;
+const ASPECT_RATIO: f32 = CANVAS_WIDTH as f32 / CANVAS_HEIGHT as f32;
 const BACKGROUND_ASCII_CODE: char = ' ';
 
-const DISTANCE_FROM_CAMERA: f32 = 200.0;
-const HORIZONTAL_OFFSET: f32 = 10.0;
+// DISTANCE_FROM_CAMERA:
+// Should be at least, HALF_CUBE_WIDTH, since this is 
+// the distance from the center to one of the cube's faces.
+const DISTANCE_FROM_CAMERA: f32 = 70.0 + HALF_CUBE_WIDTH as f32;
 
-const RESOLUTION_STEP: f32 = 1.0;
+// PROJECTION_SCALE:
+// Scale up the screen.
+// It seems like a good idea to have 
+// into consideration the DISTANCE_FROM_CAMERA 
+const PROJECTION_SCALE: f32 = DISTANCE_FROM_CAMERA / 2.0;
 
-// Screen Constant 
-const K1: f32 = 40.0;
+//
+const RESOLUTION_STEP: f32 = 0.5;
 
+const COLOR_MAPPINGS: Lazy<HashMap<char, ColoredString>> = Lazy::new(|| {
+    let mut map = HashMap::new();
+    map.insert('F', "F".yellow());
+    map.insert('K', "K".red());
+    map.insert('L', "L".cyan());
+    map.insert('R', "R".magenta());
+    map.insert('T', "T".blue());
+    map.insert('B', "B".green());
+    map.insert('_', "_".white()); // Default case
+    map
+});
+
+fn get_colored(ch: char) -> ColoredString {
+    COLOR_MAPPINGS.get(&ch).cloned().unwrap_or_else(|| " ".white())
+}
 
 fn clear_screen() {
     // Clear the terminal screen
@@ -26,20 +50,19 @@ fn clear_screen() {
     stdout().flush().unwrap();
 }
 
-fn print_buffer(buffer:&Vec<char>) {
+fn print_buffer(buffer:[char; CANVAS_WIDTH * CANVAS_HEIGHT]) {
     // Move cursor to home position (0,0) using ANSI escape code
     print!("\x1b[H");
 
     for k in 0..(CANVAS_WIDTH * CANVAS_HEIGHT) {
         if k % CANVAS_WIDTH != 0 {
-            print!("{}", buffer[k]);
+            print!("{}", get_colored(buffer[k]));
+            
         } else {
             print!("\n");
         }
     }
 }
-
-
 
 fn calculate_x(
     i: f32, 
@@ -108,140 +131,154 @@ fn calculate_for_surface(
     cube_y: f32,
     cube_z: f32,
     ch: char,
-    z_buffer: &mut Vec<f32>,
-    buffer: &mut Vec<char>,
+    z_buffer: &mut [f32; CANVAS_WIDTH * CANVAS_HEIGHT],
+    buffer: &mut [char; CANVAS_WIDTH * CANVAS_HEIGHT],
     A: f32,
     B: f32,
     C: f32,
 ) {
     let x = calculate_x(cube_x, cube_y, cube_z, A, B, C);
     let y = calculate_y(cube_x, cube_y, cube_z, A, B, C);
-    let z = calculate_z(cube_x, cube_y, cube_z, A, B, C) + DISTANCE_FROM_CAMERA;
+    let z = calculate_z(cube_x, cube_y, cube_z, A, B, C);
+    let z = z + DISTANCE_FROM_CAMERA;
 
-    let ooz = 1.0 / z;
+    // Inverse of z = 
+    // this give us the idea of 'how far' the resulting point will be from the camera
+    // bigger values => closer to camera, smaller values => further away...
+    let ooz =  1.0 / z; 
 
-    let xp = (CANVAS_WIDTH as f32 / 2.0 + HORIZONTAL_OFFSET + K1 * ooz * x * 2.0) as isize;
-    let yp = (CANVAS_HEIGHT as f32 / 2.0 + K1 * ooz * y) as isize;
+    let xp = (CANVAS_WIDTH as f32 /2.0 + PROJECTION_SCALE * ooz * x * ASPECT_RATIO) as isize;
+    let yp = (CANVAS_HEIGHT as f32 / 2.0 - PROJECTION_SCALE * ooz * y) as isize;
 
+    // Out of canvas limits..
+    if xp < 0 || (xp as usize) >= CANVAS_WIDTH {
+        return;
+    }
+    if yp < 0 || (yp as usize) >= CANVAS_HEIGHT {
+        return;
+    }
+        
     let idx = xp + yp * CANVAS_WIDTH as isize;
-    if idx >= 0 && (idx as usize) < CANVAS_WIDTH * CANVAS_HEIGHT {
-        let idx = idx as usize;
-
-        if ooz > z_buffer[idx] {
-            z_buffer[idx] = ooz;
-            buffer[idx] = ch;
-        }
+    let idx = idx as usize;
+    if ooz > z_buffer[idx] {
+        z_buffer[idx] = ooz;
+        buffer[idx] = ch;
     }
 }
 
+
 fn main() {
-    // Create a vector for the zBuffer initialized to 0.0 (f32 values)
-    let mut z_buffer: Vec<f32> = vec![0.0; CANVAS_WIDTH * CANVAS_HEIGHT];
-    // Create a vector for the buffer initialized to the BACKGROUND_ASCII_CODE
-    let mut buffer: Vec<char> = vec![BACKGROUND_ASCII_CODE; CANVAS_WIDTH * CANVAS_HEIGHT];
+    let mut z_buffer: [f32; CANVAS_WIDTH * CANVAS_HEIGHT] = [0.0; CANVAS_WIDTH * CANVAS_HEIGHT];
+    let mut buffer: [char; CANVAS_WIDTH * CANVAS_HEIGHT] = [BACKGROUND_ASCII_CODE; CANVAS_WIDTH * CANVAS_HEIGHT];
+
     clear_screen();
 
-    let mut A: f32 = 0.0;
-    let mut B: f32 = 0.0;
-    let mut C: f32 = 0.0;
+    // Rotation values...
+    let mut alpha: f32 = 0.0;
+    let mut beta: f32 = 0.0;
+    let mut gamma: f32 = 0.0;
     
     loop {
         // Clear screen and z buffers
         buffer.fill(BACKGROUND_ASCII_CODE);
         z_buffer.fill(0.0);
         
-        let mut cube_x = -1.0 * (CUBE_WIDTH as f32);
-        while cube_x < CUBE_WIDTH as f32 {
+        let mut cube_x = -1.0 * HALF_CUBE_WIDTH as f32;
+        while cube_x < HALF_CUBE_WIDTH as f32 {
             
-            let mut cube_y = -1.0 * (CUBE_WIDTH as f32);
-            while cube_y < CUBE_WIDTH as f32 {
+            let mut cube_y = -1.0 * HALF_CUBE_WIDTH as f32;
+            while cube_y < HALF_CUBE_WIDTH as f32 {
                 // Plane F; Front side, We update X and Y, and keep Z constant 
-                //      _______
+                //       ______
                 //     /      /|
                 //    /______/ |
-                //    |  F   | |
-                //    |      | /
+                //    |      | |
+                //    |  F   | /
                 //    |______|/
                 //
-                // (Multiplying by -1 means closer to camera)
-                let z_value = -1.0 * (CUBE_WIDTH as f32);
-                calculate_for_surface(cube_x, cube_y, z_value, 'F', &mut z_buffer, &mut buffer, A, B, C);
+                let x_value = cube_x;
+                let y_value = cube_y;
+                let z_value = -1.0 * (HALF_CUBE_WIDTH as f32);
+                calculate_for_surface(x_value, y_value, z_value, 'F', &mut z_buffer, &mut buffer, alpha, beta, gamma);
                 
-                //  Plane K; Back side, We update X and Y, and keep Z constant 
-                //       ________
-                //      /|  K   |
-                //     / |      |
-                //    |  |______|
-                //    | /      /
-                //    |/______/
-                //
-                // (Multiplying by positive 1 means further from camera)
-                let z_value = 1.0 * (CUBE_WIDTH as f32);
-                calculate_for_surface(cube_x, cube_y, z_value, 'K', &mut z_buffer, &mut buffer, A, B, C);
+                // //  Plane K; Back side, We update X and Y, and keep Z constant 
+                // //        ______
+                // //      /|  K   |
+                // //     / |      |
+                // //    |  |______|
+                // //    | /      /
+                // //    |/______/
+                // //
+                let x_value = cube_x;
+                let y_value = cube_y;
+                let z_value = 1.0 * (HALF_CUBE_WIDTH as f32);
+                calculate_for_surface(x_value, y_value, z_value, 'K', &mut z_buffer, &mut buffer, alpha, beta, gamma);
 
                 //  Plane L; Left side, we update Y and Z, and keep X constant
-                //           _______
-                //         / |     |
-                // L -->  /  |     |
-                //        |  |_____|
+                //            ______
+                //          /|      |
+                //         / |      |
+                // L -->  |  |______|
                 //        | /      /
                 //        |/______/
                 //
-                // (Multiplying by -1 means to the left)
-                let x_value = -1.0 * (CUBE_WIDTH as f32);
-                calculate_for_surface(x_value, cube_y, cube_x, 'L', &mut z_buffer, &mut buffer, A, B, C);
+                let x_value = -1.0 * (HALF_CUBE_WIDTH as f32);
+                let y_value = cube_y;
+                let z_value = cube_x;
+                calculate_for_surface(x_value, y_value, z_value, 'L', &mut z_buffer, &mut buffer, alpha, beta, gamma);
                 
                 //  Plane R; Right side, we update Y and Z, and keep X constant
-                //           _______
-                //         / |    /|
-                //        /  |   / | <-- R
-                //        |  |___| |
-                //        | /    | /
-                //        |/_____|/
-                //
-                // (Multiplying by 1 means to the right)
-                let x_value = 1.0 * (CUBE_WIDTH as f32);
-                calculate_for_surface(x_value, cube_y, cube_x, 'R', &mut z_buffer, &mut buffer, A, B, C);
-
-                //  Plane T; Top, we update X and Z, and keep Y constant
-                //           _______
-                //         /   T  /|
-                //        /______/ | 
-                //        |      | |
-                //        |      | /
-                //        |______|/
-                //
-                // (Multiplying by -1 means to the top)
-                let y_value = -1.0 * (CUBE_WIDTH as f32);
-                calculate_for_surface(cube_x, y_value, cube_y, 'T', &mut z_buffer, &mut buffer, A, B, C);
+                //            ______
+                //          /|      /|
+                //         / |     / | <-- R
+                //        |  |____|  |
+                //        | /     | /
+                //        |/______|/
+                // 
+                let x_value = 1.0 * (HALF_CUBE_WIDTH as f32);
+                let y_value = cube_y;
+                let z_value = cube_x;
+                calculate_for_surface(x_value, y_value, z_value, 'R', &mut z_buffer, &mut buffer, alpha, beta, gamma);
 
                 //  Plane B; Bottom, we update X and Z, and keep Y constant
-                //           _______
-                //         / |     |
-                //        /  |     |
-                //        |  |_____|
+                //            ______
+                //         / |      |
+                //        /  |      |
+                //        |  |______|
                 //        | /   B  /
                 //        |/______/
                 //
-                // (Multiplying by 1 means to the bottom)
-                let y_value = 1.0 * (CUBE_WIDTH as f32);
-                calculate_for_surface(cube_x, y_value, cube_y, 'B', &mut z_buffer, &mut buffer, A, B, C);
+                let x_value = cube_x;
+                let y_value = -1.0 * (HALF_CUBE_WIDTH as f32);
+                let z_value = cube_y;
+                calculate_for_surface(x_value, y_value, z_value, 'B', &mut z_buffer, &mut buffer, alpha, beta, gamma);
+                
+                //  Plane T; Top, we update X and Z, and keep Y constant
+                //           ______
+                //         /   T   /|
+                //        /______ / | 
+                //        |      |  |
+                //        |      | /
+                //        |______|/
+                //
+                let x_value = cube_x;
+                let y_value = 1.0 * (HALF_CUBE_WIDTH as f32);
+                let z_value = cube_y;
+                calculate_for_surface(x_value, y_value, z_value, 'T', &mut z_buffer, &mut buffer, alpha, beta, gamma);
 
-                // Increment the cube_y by RESOLUTION_STEP
                 cube_y += RESOLUTION_STEP;
             }
             
-            // Increment the cube_x by RESOLUTION_STEP
             cube_x += RESOLUTION_STEP;
         }
         
-        print_buffer(&buffer);
+        print_buffer(buffer);
 
         thread::sleep(Duration::from_millis(16)); // 60 fps!
         
-        A += 2.5; // x
-        B += 2.5; // y
-        C += 2.0; //z
+        alpha += 2.5;
+        beta += 2.0;
+        gamma += 1.5;
     }
 
 }
