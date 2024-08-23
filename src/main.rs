@@ -68,16 +68,16 @@ fn calculate_x(
     i: f32, 
     j: f32, 
     k: f32, 
-    A: f32,
-    B: f32,
-    C: f32,
+    alpha: f32,
+    beta: f32,
+    gamma: f32,
 ) -> f32 {
-    let sin_a = A.to_radians().sin();
-    let cos_a = A.to_radians().cos();
-    let sin_b = B.to_radians().sin();
-    let cos_b = B.to_radians().cos();
-    let sin_c = C.to_radians().sin();
-    let cos_c = C.to_radians().cos();
+    let sin_a = alpha.to_radians().sin();
+    let cos_a = alpha.to_radians().cos();
+    let sin_b = beta.to_radians().sin();
+    let cos_b = beta.to_radians().cos();
+    let sin_c = gamma.to_radians().sin();
+    let cos_c = gamma.to_radians().cos();
 
     j as f32 * sin_a * sin_b * cos_c
         - k as f32 * cos_a * sin_b * cos_c
@@ -90,16 +90,16 @@ fn calculate_y(
     i: f32, 
     j: f32,
     k: f32,
-    A: f32,
-    B: f32,
-    C: f32,
+    alpha: f32,
+    beta: f32,
+    gamma: f32,
 ) -> f32 {
-    let sin_a = A.to_radians().sin();
-    let cos_a = A.to_radians().cos();
-    let sin_b = B.to_radians().sin();
-    let cos_b = B.to_radians().cos();
-    let sin_c = C.to_radians().sin();
-    let cos_c = C.to_radians().cos();
+    let sin_a = alpha.to_radians().sin();
+    let cos_a = alpha.to_radians().cos();
+    let sin_b = beta.to_radians().sin();
+    let cos_b = beta.to_radians().cos();
+    let sin_c = gamma.to_radians().sin();
+    let cos_c = gamma.to_radians().cos();
 
     j as f32 * cos_a * cos_c
         + k as f32 * sin_a * cos_c
@@ -112,14 +112,13 @@ fn calculate_z(
     i: f32, 
     j: f32,
     k: f32,
-    A: f32,
-    B: f32,
-    C: f32,
+    alpha: f32,
+    beta: f32,
 ) -> f32 {
-    let sin_a = A.to_radians().sin();
-    let cos_a = A.to_radians().cos();
-    let sin_b = B.to_radians().sin();
-    let cos_b = B.to_radians().cos();
+    let sin_a = alpha.to_radians().sin();
+    let cos_a = alpha.to_radians().cos();
+    let sin_b = beta.to_radians().sin();
+    let cos_b = beta.to_radians().cos();
 
     k as f32 * cos_a * cos_b
         - j as f32 * sin_a * cos_b
@@ -133,13 +132,13 @@ fn calculate_for_surface(
     ch: char,
     z_buffer: &mut [f32; CANVAS_WIDTH * CANVAS_HEIGHT],
     buffer: &mut [char; CANVAS_WIDTH * CANVAS_HEIGHT],
-    A: f32,
-    B: f32,
-    C: f32,
+    alpha: f32,
+    beta: f32,
+    gamma: f32,
 ) {
-    let x = calculate_x(cube_x, cube_y, cube_z, A, B, C);
-    let y = calculate_y(cube_x, cube_y, cube_z, A, B, C);
-    let z = calculate_z(cube_x, cube_y, cube_z, A, B, C);
+    let x = calculate_x(cube_x, cube_y, cube_z, alpha, beta, gamma);
+    let y = calculate_y(cube_x, cube_y, cube_z, alpha, beta, gamma);
+    let z = calculate_z(cube_x, cube_y, cube_z, alpha, beta);
     let z = z + DISTANCE_FROM_CAMERA;
 
     // Inverse of z = 
