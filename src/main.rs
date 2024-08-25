@@ -85,6 +85,7 @@ fn print_vars(
     println!("PROJECTION_SCALE     : {:.2} \t(i/k: +/-)", projection_scale);
     println!("RESOLUTION_STEP      : {:.2} \t(o/l: +/-)", resolution_step);
     print!("\n");
+    println!("z: reset");
     println!("q: quit");
 
 }
@@ -376,6 +377,20 @@ fn process_input(
                 *resolution_step -= 0.1;
             }
             
+            KeyCode::Char('z') => {
+                *auto_alpha = 0.0;
+                *auto_beta = 0.0;
+                *auto_gamma = 0.0;
+
+                *alpha = 0.0;
+                *beta = 0.0;
+                *gamma = 0.0;
+
+                *distance_from_camera = DISTANCE_FROM_CAMERA;
+                *projection_scale = PROJECTION_SCALE;
+                *resolution_step = RESOLUTION_STEP;
+            }
+
             KeyCode::Char('q') => {
                 std::process::exit(0);
             }
