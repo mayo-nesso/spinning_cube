@@ -7,5 +7,3 @@ pub const BACKGROUND_ASCII_CODE: char = ' ';
 pub const DISTANCE_FROM_CAMERA: f32 = 53.0 + HALF_CUBE_WIDTH as f32;
 pub const PROJECTION_SCALE: f32 = DISTANCE_FROM_CAMERA / 2.0;
 pub const RESOLUTION_STEP: f32 = 0.6;
-
-
