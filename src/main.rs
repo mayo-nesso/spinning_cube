@@ -41,6 +41,32 @@ struct CubeParameters {
     resolution_step: f32,
 }
 
+enum CubeAction {
+    ToggleAutoAlpha,
+    IncreaseAlpha,
+    DecreaseAlpha,
+    
+    ToggleAutoBeta,
+    IncreaseBeta,
+    DecreaseBeta,
+    
+    ToggleAutoGamma,
+    IncreaseGamma,
+    DecreaseGamma,
+    
+    IncreaseDistanceFromCamera,
+    DecreaseDistanceFromCamera,
+    
+    IncreaseProjectionScale,
+    DecreaseProjectionScale,
+
+    IncreaseResolutionStep,
+    DecreaseResolutionStep,
+    
+    Reset,
+    Quit,
+}
+
 impl CubeParameters {
     fn new() -> Self {
         Self {
@@ -58,6 +84,12 @@ impl CubeParameters {
 
     fn reset(&mut self) {
         *self = Self::new();
+    }
+
+    fn update_auto_rotations(&mut self) {
+        self.alpha += 2.5 * self.auto_alpha;
+        self.beta += 2.0 * self.auto_beta;
+        self.gamma += 1.5 * self.auto_gamma;
     }
 }
 
@@ -360,39 +392,69 @@ fn setup_input_listener() -> mpsc::Receiver<KeyCode> {
     rx
 }
 
-fn process_input(
-    rx: &mpsc::Receiver<KeyCode>, 
-    params: &mut CubeParameters,
-) {
-    // TODO; + and - values are hardcoded...
-    // TODO2; command pattern?
-    if let Ok(key_code) = rx.try_recv() {
-        match key_code {
-            KeyCode::Char('a') => params.auto_alpha = 1.0 - params.auto_alpha,
-            KeyCode::Char('e') => params.alpha += 2.5,
-            KeyCode::Char('r') => params.alpha -= 5.0,
+impl CubeParameters {
+    fn apply_action(&mut self, action: CubeAction) {
+        match action {
+            CubeAction::ToggleAutoAlpha => self.auto_alpha = 1.0 - self.auto_alpha,
+            CubeAction::IncreaseAlpha => self.alpha += 2.5,
+            CubeAction::DecreaseAlpha => self.alpha -= 5.0,
+            
+            CubeAction::ToggleAutoBeta => self.auto_beta = 1.0 - self.auto_beta,
+            CubeAction::IncreaseBeta => self.beta += 2.5,
+            CubeAction::DecreaseBeta => self.beta -= 5.0,
+            
+            CubeAction::ToggleAutoGamma => self.auto_gamma = 1.0 - self.auto_gamma,
+            CubeAction::IncreaseGamma => self.gamma += 2.5,
+            CubeAction::DecreaseGamma => self.gamma -= 5.0,
+            
+            CubeAction::IncreaseDistanceFromCamera => self.distance_from_camera += 1.5,
+            CubeAction::DecreaseDistanceFromCamera => self.distance_from_camera -= 1.0,
+            
+            CubeAction::IncreaseProjectionScale => self.projection_scale += 1.5,
+            CubeAction::DecreaseProjectionScale => self.projection_scale -= 1.0,
+            
+            CubeAction::IncreaseResolutionStep => self.resolution_step += 0.1,
+            CubeAction::DecreaseResolutionStep => self.resolution_step -= 0.1,
+            
+            CubeAction::Reset => self.reset(),
+            CubeAction::Quit => std::process::exit(0),
+        }
+    }
+}
 
-            KeyCode::Char('b') => params.auto_beta = 1.0 - params.auto_beta,
-            KeyCode::Char('d') => params.beta += 2.5,
-            KeyCode::Char('f') => params.beta -= 5.0,
-            
-            KeyCode::Char('g') => params.auto_gamma = 1.0 - params.auto_gamma,
-            KeyCode::Char('c') => params.gamma += 2.5,
-            KeyCode::Char('v') => params.gamma -= 5.0,
-            
-            KeyCode::Char('u') => params.distance_from_camera += 1.5,
-            KeyCode::Char('j') => params.distance_from_camera -= 1.0,
-            
-            KeyCode::Char('i') => params.projection_scale += 1.5,
-            KeyCode::Char('k') => params.projection_scale -= 1.0,
-            
-            KeyCode::Char('o') => params.resolution_step += 0.1,
-            KeyCode::Char('l') => params.resolution_step -= 0.1,
-            
-            KeyCode::Char('z') => params.reset(),
-            KeyCode::Char('q') => std::process::exit(0),
-            
-            _ => {}
+fn key_to_action(key: KeyCode) -> Option<CubeAction> {
+    match key {
+        KeyCode::Char('a') => Some(CubeAction::ToggleAutoAlpha),
+        KeyCode::Char('e') => Some(CubeAction::IncreaseAlpha),
+        KeyCode::Char('r') => Some(CubeAction::DecreaseAlpha),
+        
+        KeyCode::Char('b') => Some(CubeAction::ToggleAutoBeta),
+        KeyCode::Char('d') => Some(CubeAction::IncreaseBeta),
+        KeyCode::Char('f') => Some(CubeAction::DecreaseBeta),
+        
+        KeyCode::Char('g') => Some(CubeAction::ToggleAutoGamma),
+        KeyCode::Char('c') => Some(CubeAction::IncreaseGamma),
+        KeyCode::Char('v') => Some(CubeAction::DecreaseGamma),
+        
+        KeyCode::Char('u') => Some(CubeAction::IncreaseDistanceFromCamera),
+        KeyCode::Char('j') => Some(CubeAction::DecreaseDistanceFromCamera),
+        
+        KeyCode::Char('i') => Some(CubeAction::IncreaseProjectionScale),
+        KeyCode::Char('k') => Some(CubeAction::DecreaseProjectionScale),
+        
+        KeyCode::Char('o') => Some(CubeAction::IncreaseResolutionStep),
+        KeyCode::Char('l') => Some(CubeAction::DecreaseResolutionStep),
+        
+        KeyCode::Char('z') => Some(CubeAction::Reset),
+        KeyCode::Char('q') => Some(CubeAction::Quit),
+        _ => None,
+    }
+}
+
+fn process_input(rx: &mpsc::Receiver<KeyCode>, params: &mut CubeParameters) {
+    if let Ok(key_code) = rx.try_recv() {
+        if let Some(action) = key_to_action(key_code) {
+            params.apply_action(action);
         }
     }
 }
@@ -424,8 +486,6 @@ fn main() {
         process_input(&rx, &mut params);
 
         // Auto Rotation 
-        params.alpha += 2.5 * params.auto_alpha;
-        params.beta += 2.0 * params.auto_beta;
-        params.gamma += 1.5 * params.auto_gamma;
+        params.update_auto_rotations();
     }
 }
