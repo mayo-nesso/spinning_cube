@@ -76,11 +76,11 @@ fn calculate_x(
   let sin_c = gamma.to_radians().sin();
   let cos_c = gamma.to_radians().cos();
 
-  j as f32 * sin_a * sin_b * cos_c
-      - k as f32 * cos_a * sin_b * cos_c
-      + j as f32 * cos_a * sin_c
-      + k as f32 * sin_a * sin_c
-      + i as f32 * cos_b * cos_c
+  i * cos_a * cos_b
+    + j * cos_a * sin_b * sin_c
+    - j * sin_a * cos_c
+    + k * cos_a * sin_b * cos_c  
+    + k * sin_a * sin_c
 }
 
 fn calculate_y(
@@ -98,11 +98,12 @@ fn calculate_y(
   let sin_c = gamma.to_radians().sin();
   let cos_c = gamma.to_radians().cos();
 
-  j as f32 * cos_a * cos_c
-      + k as f32 * sin_a * cos_c
-      - j as f32 * sin_a * sin_b * sin_c
-      + k as f32 * cos_a * sin_b * sin_c
-      - i as f32 * cos_b * sin_c
+  i * sin_a * cos_b
+    + j * sin_a * sin_b * sin_c
+    + j * cos_a * cos_c
+    + k * sin_a * sin_b * cos_c
+    - k * cos_a * sin_c
+
 }
 
 fn calculate_z(
@@ -111,15 +112,18 @@ fn calculate_z(
   k: f32,
   alpha: f32,
   beta: f32,
+  gamma: f32,
 ) -> f32 {
   let sin_a = alpha.to_radians().sin();
   let cos_a = alpha.to_radians().cos();
   let sin_b = beta.to_radians().sin();
   let cos_b = beta.to_radians().cos();
+  let sin_c = gamma.to_radians().sin();
+  let cos_c = gamma.to_radians().cos();
 
-  k as f32 * cos_a * cos_b
-      - j as f32 * sin_a * cos_b
-      + i as f32 * sin_b
+  - i * sin_b
+    + j * cos_b * sin_c
+    + k * cos_b * cos_c
 }
 
 fn calculate_for_surface(
@@ -135,29 +139,45 @@ fn calculate_for_surface(
   distance_from_camera: f32,
   projection_scale: f32,
 ) {
+  // Apply rotation transformations to the cube coordinates
   let x = calculate_x(cube_x, cube_y, cube_z, alpha, beta, gamma);
   let y = calculate_y(cube_x, cube_y, cube_z, alpha, beta, gamma);
-  let z = calculate_z(cube_x, cube_y, cube_z, alpha, beta);
-  let z = z + distance_from_camera;
+  let z = calculate_z(cube_x, cube_y, cube_z, alpha, beta, gamma);
+  // Adjust z-coordinate based on camera distance
+  let z = z - distance_from_camera;
+  
+  // Calculate the inverse of z (ooz: one over z)
+  //
+  // In our coordinate system:
+  // i.- z = 0 is at the origin
+  // ii.- Positive z values are closer to the camera
+  // iii.- Negative z values are further from the camera
+  //
+  // After subtracting distance_from_camera, all z values become negative
+  // Smaller negative z values are closer to the camera
+  let ooz = - 1.0 / z;  
+  // So now, regarding ooz:
+  // i.- All values are positive
+  // ii.- Larger values indicate closer proximity to the camera (useful for z-buffer comparisons)
+  
+  // Convert 3D coordinates to 2D screen space
+  // Note how we use here ooz to 'shrink' or 'expand' the projection
+  let xp = (CANVAS_WIDTH as f32 /2.0 + x * ooz * projection_scale * ASPECT_RATIO) as isize;
+  let yp = (CANVAS_HEIGHT as f32 / 2.0 - y * ooz * projection_scale) as isize;
 
-  // Inverse of z = 
-  // this give us the idea of 'how far' the resulting point will be from the camera
-  // bigger values => closer to camera, smaller values => further away...
-  let ooz =  1.0 / z; 
-
-  let xp = (CANVAS_WIDTH as f32 /2.0 + projection_scale * ooz * x * ASPECT_RATIO) as isize;
-  let yp = (CANVAS_HEIGHT as f32 / 2.0 - projection_scale * ooz * y) as isize;
-
-  // Out of canvas limits..
+  // Check if (xp,yp) point is within the canvas boundaries
   if xp < 0 || (xp as usize) >= CANVAS_WIDTH {
       return;
   }
   if yp < 0 || (yp as usize) >= CANVAS_HEIGHT {
       return;
   }
-      
+  
+  // Calculate the buffer index for the current point
   let idx = xp + yp * CANVAS_WIDTH as isize;
   let idx = idx as usize;
+  
+  // Update the z-buffer and character buffer only if this point is closer to the camera
   if ooz > z_buffer[idx] {
       z_buffer[idx] = ooz;
       buffer[idx] = ch;
@@ -174,6 +194,34 @@ pub fn draw_cube(
         
         let mut cube_y = -1.0 * HALF_CUBE_WIDTH as f32;
         while cube_y < HALF_CUBE_WIDTH as f32 {
+            // Axis following Rigth-Hand rule
+            //      y
+            //      |
+            //      |
+            //      |_ _ _ _ x
+            //     /
+            //    /
+            //   z
+            //
+
+            //  Plane K; Back side, We update X and Y, and keep Z constant 
+            //        ______
+            //      /|  K   |
+            //     / |      |
+            //    |  |______|
+            //    | /      /
+            //    |/______/
+            //
+            let x_value = cube_x;
+            let y_value = cube_y;
+            let z_value = -1.0 * (HALF_CUBE_WIDTH as f32);
+            calculate_for_surface(
+                x_value, y_value, z_value,
+                'K',
+                z_buffer, buffer,
+                params.alpha, params.beta, params.gamma,
+                params.distance_from_camera, params.projection_scale);
+
             // Plane F; Front side, We update X and Y, and keep Z constant 
             //       ______
             //     /      /|
@@ -184,28 +232,10 @@ pub fn draw_cube(
             //
             let x_value = cube_x;
             let y_value = cube_y;
-            let z_value = -1.0 * (HALF_CUBE_WIDTH as f32);
-            calculate_for_surface(
-                x_value, y_value, z_value,
-                'F',
-                z_buffer, buffer,
-                params.alpha, params.beta, params.gamma,
-                params.distance_from_camera, params.projection_scale);
-            
-            // //  Plane K; Back side, We update X and Y, and keep Z constant 
-            // //        ______
-            // //      /|  K   |
-            // //     / |      |
-            // //    |  |______|
-            // //    | /      /
-            // //    |/______/
-            // //
-            let x_value = cube_x;
-            let y_value = cube_y;
             let z_value = 1.0 * (HALF_CUBE_WIDTH as f32);
             calculate_for_surface(
                 x_value, y_value, z_value,
-                'K',
+                'F',
                 z_buffer, buffer,
                 params.alpha, params.beta, params.gamma,
                 params.distance_from_camera, params.projection_scale);
