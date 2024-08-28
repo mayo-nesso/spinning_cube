@@ -61,7 +61,6 @@ pub fn print_buffer(buffer:[char; CANVAS_WIDTH * CANVAS_HEIGHT]) {
   }
 }
 
-
 fn calculate_x(
   i: f32, 
   j: f32, 
@@ -186,136 +185,136 @@ fn calculate_for_surface(
 }
 
 pub fn draw_cube(
-    z_buffer: &mut [f32; CANVAS_WIDTH * CANVAS_HEIGHT],
-    buffer: &mut [char; CANVAS_WIDTH * CANVAS_HEIGHT],
-    params: &CubeParameters,
+  z_buffer: &mut [f32; CANVAS_WIDTH * CANVAS_HEIGHT],
+  buffer: &mut [char; CANVAS_WIDTH * CANVAS_HEIGHT],
+  params: &CubeParameters,
 ) {
-    let mut cube_x = -1.0 * HALF_CUBE_WIDTH as f32;
-    while cube_x < HALF_CUBE_WIDTH as f32 {
-        
-        let mut cube_y = -1.0 * HALF_CUBE_WIDTH as f32;
-        while cube_y < HALF_CUBE_WIDTH as f32 {
-            // Axis following Rigth-Hand rule
-            //      y
-            //      |
-            //      |
-            //      |_ _ _ _ x
-            //     /
-            //    /
-            //   z
-            //
+  let mut cube_x = -1.0 * HALF_CUBE_WIDTH as f32;
+  while cube_x < HALF_CUBE_WIDTH as f32 {
 
-            //  Plane K; Back side, We update X and Y, and keep Z constant 
-            //        ______
-            //      /|  K   |
-            //     / |      |
-            //    |  |______|
-            //    | /      /
-            //    |/______/
-            //
-            let x_value = cube_x;
-            let y_value = cube_y;
-            let z_value = -1.0 * (HALF_CUBE_WIDTH as f32);
-            calculate_for_surface(
-                x_value, y_value, z_value,
-                'K',
-                z_buffer, buffer,
-                params.alpha, params.beta, params.gamma,
-                params.distance_from_camera, params.projection_scale);
+    let mut cube_y = -1.0 * HALF_CUBE_WIDTH as f32;
+    while cube_y < HALF_CUBE_WIDTH as f32 {
+      // Axis following Rigth-Hand rule
+      //      y
+      //      |
+      //      |
+      //      |_ _ _ _ x
+      //     /
+      //    /
+      //   z
+      //
 
-            // Plane F; Front side, We update X and Y, and keep Z constant 
-            //       ______
-            //     /      /|
-            //    /______/ |
-            //    |      | |
-            //    |  F   | /
-            //    |______|/
-            //
-            let x_value = cube_x;
-            let y_value = cube_y;
-            let z_value = 1.0 * (HALF_CUBE_WIDTH as f32);
-            calculate_for_surface(
-                x_value, y_value, z_value,
-                'F',
-                z_buffer, buffer,
-                params.alpha, params.beta, params.gamma,
-                params.distance_from_camera, params.projection_scale);
+      //  Plane K; Back side, We update X and Y, and keep Z constant 
+      //        ______
+      //      /|  K   |
+      //     / |      |
+      //    |  |______|
+      //    | /      /
+      //    |/______/
+      //
+      let x_value = cube_x;
+      let y_value = cube_y;
+      let z_value = -1.0 * (HALF_CUBE_WIDTH as f32);
+      calculate_for_surface(
+        x_value, y_value, z_value,
+        'K',
+        z_buffer, buffer,
+        params.alpha, params.beta, params.gamma,
+        params.distance_from_camera, params.projection_scale);
 
-            //  Plane L; Left side, we update Y and Z, and keep X constant
-            //            ______
-            //          /|      |
-            //         / |      |
-            // L -->  |  |______|
-            //        | /      /
-            //        |/______/
-            //
-            let x_value = -1.0 * (HALF_CUBE_WIDTH as f32);
-            let y_value = cube_y;
-            let z_value = cube_x;
-            calculate_for_surface(
-                x_value, y_value, z_value,
-                'L',
-                z_buffer, buffer,
-                params.alpha, params.beta, params.gamma,
-                params.distance_from_camera, params.projection_scale);
-            
-            //  Plane R; Right side, we update Y and Z, and keep X constant
-            //            ______
-            //          /|      /|
-            //         / |     / | <-- R
-            //        |  |____|  |
-            //        | /     | /
-            //        |/______|/
-            // 
-            let x_value = 1.0 * (HALF_CUBE_WIDTH as f32);
-            let y_value = cube_y;
-            let z_value = cube_x;
-            calculate_for_surface(
-                x_value, y_value, z_value,
-                'R',
-                z_buffer, buffer,
-                params.alpha, params.beta, params.gamma,
-                params.distance_from_camera, params.projection_scale);
+      // Plane F; Front side, We update X and Y, and keep Z constant 
+      //       ______
+      //     /      /|
+      //    /______/ |
+      //    |      | |
+      //    |  F   | /
+      //    |______|/
+      //
+      let x_value = cube_x;
+      let y_value = cube_y;
+      let z_value = 1.0 * (HALF_CUBE_WIDTH as f32);
+      calculate_for_surface(
+        x_value, y_value, z_value,
+        'F',
+        z_buffer, buffer,
+        params.alpha, params.beta, params.gamma,
+        params.distance_from_camera, params.projection_scale);
 
-            //  Plane B; Bottom, we update X and Z, and keep Y constant
-            //            ______
-            //         / |      |
-            //        /  |      |
-            //        |  |______|
-            //        | /   B  /
-            //        |/______/
-            //
-            let x_value = cube_x;
-            let y_value = -1.0 * (HALF_CUBE_WIDTH as f32);
-            let z_value = cube_y;
-            calculate_for_surface(
-                x_value, y_value, z_value,
-                'B',
-                z_buffer, buffer,
-                params.alpha, params.beta, params.gamma,
-                params.distance_from_camera, params.projection_scale);
-            
-            //  Plane T; Top, we update X and Z, and keep Y constant
-            //           ______
-            //         /   T   /|
-            //        /______ / | 
-            //        |      |  |
-            //        |      | /
-            //        |______|/
-            //
-            let x_value = cube_x;
-            let y_value = 1.0 * (HALF_CUBE_WIDTH as f32);
-            let z_value = cube_y;
-            calculate_for_surface(
-                x_value, y_value, z_value,
-                'T',
-                z_buffer, buffer,
-                params.alpha, params.beta, params.gamma,
-                params.distance_from_camera, params.projection_scale);
+      //  Plane L; Left side, we update Y and Z, and keep X constant
+      //            ______
+      //          /|      |
+      //         / |      |
+      // L -->  |  |______|
+      //        | /      /
+      //        |/______/
+      //
+      let x_value = -1.0 * (HALF_CUBE_WIDTH as f32);
+      let y_value = cube_y;
+      let z_value = cube_x;
+      calculate_for_surface(
+        x_value, y_value, z_value,
+        'L',
+        z_buffer, buffer,
+        params.alpha, params.beta, params.gamma,
+        params.distance_from_camera, params.projection_scale);
+      
+      //  Plane R; Right side, we update Y and Z, and keep X constant
+      //            ______
+      //          /|      /|
+      //         / |     / | <-- R
+      //        |  |____|  |
+      //        | /     | /
+      //        |/______|/
+      // 
+      let x_value = 1.0 * (HALF_CUBE_WIDTH as f32);
+      let y_value = cube_y;
+      let z_value = cube_x;
+      calculate_for_surface(
+        x_value, y_value, z_value,
+        'R',
+        z_buffer, buffer,
+        params.alpha, params.beta, params.gamma,
+        params.distance_from_camera, params.projection_scale);
 
-            cube_y += params.resolution_step;
-        }
-        
-        cube_x += params.resolution_step;
+      //  Plane B; Bottom, we update X and Z, and keep Y constant
+      //            ______
+      //         / |      |
+      //        /  |      |
+      //        |  |______|
+      //        | /   B  /
+      //        |/______/
+      //
+      let x_value = cube_x;
+      let y_value = -1.0 * (HALF_CUBE_WIDTH as f32);
+      let z_value = cube_y;
+      calculate_for_surface(
+        x_value, y_value, z_value,
+        'B',
+        z_buffer, buffer,
+        params.alpha, params.beta, params.gamma,
+        params.distance_from_camera, params.projection_scale);
+    
+      //  Plane T; Top, we update X and Z, and keep Y constant
+      //           ______
+      //         /   T   /|
+      //        /______ / | 
+      //        |      |  |
+      //        |      | /
+      //        |______|/
+      //
+      let x_value = cube_x;
+      let y_value = 1.0 * (HALF_CUBE_WIDTH as f32);
+      let z_value = cube_y;
+      calculate_for_surface(
+        x_value, y_value, z_value,
+        'T',
+        z_buffer, buffer,
+        params.alpha, params.beta, params.gamma,
+        params.distance_from_camera, params.projection_scale);
+
+      cube_y += params.resolution_step;
     }
+    
+    cube_x += params.resolution_step;
+  }
 }
