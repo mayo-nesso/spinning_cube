@@ -162,7 +162,11 @@ fn calculate_for_surface(
   
   // Convert 3D coordinates to 2D screen space
   // Note how we use here ooz to 'shrink' or 'expand' the projection
+  
+  // xp = ... + x * ...: Positive x values move the point to the right, so we add to the center of the screen.
   let xp = (CANVAS_WIDTH as f32 /2.0 + x * ooz * projection_scale * ASPECT_RATIO) as isize;
+  // yp = ... - y * ...: Positive y values (in 3D space) move the point up, 
+  // but because screen space has the y-axis increasing downward, we subtract to move the point upward on the screen.
   let yp = (CANVAS_HEIGHT as f32 / 2.0 - y * ooz * projection_scale) as isize;
 
   // Check if (xp,yp) point is within the canvas boundaries
