@@ -43,6 +43,7 @@ pub fn print_vars(params: &CubeParameters) {
   print!("\n");
   println!("z: reset");
   println!("q: quit");
+  println!("(Press 'cmd key' + 'Enter')");
 }
 
 

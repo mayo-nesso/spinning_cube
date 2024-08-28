@@ -21,7 +21,7 @@ fn main() {
     clear_screen();
     
     loop {
-        // Clear screen and z buffers
+        // Clear z buffers
         buffer.fill(BACKGROUND_ASCII_CODE);
         z_buffer.fill(0.0);
         
