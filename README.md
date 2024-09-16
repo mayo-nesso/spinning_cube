@@ -3,7 +3,9 @@
 ![Its alive](./imgs/its_alive.gif)
 
 This little experiment is a simple Rust application that renders a rotating ASCII cube in the terminal.
-The idea of doing this in Rust and with some colors popped it into my mind after watching [YouTube video "ASCII Cube - An interactive 3D ASCII art animation"](https://www.youtube.com/watch?v=p09i_hoFdd0).
+The idea of doing this in Rust and with some colors popped into my mind after watching [YouTube video "ASCII Cube - An interactive 3D ASCII art animation"](https://www.youtube.com/watch?v=p09i_hoFdd0).
+
+["A more detailed story about all of this..."](https://mayonesso.com/blog/2024/08/cube-projection-in-rust/)
 
 ## Features
 
